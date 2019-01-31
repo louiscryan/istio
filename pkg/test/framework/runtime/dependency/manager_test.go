@@ -285,8 +285,8 @@ func TestNamedIdsCreateMultipleComponents(t *testing.T) {
 	m := newManager(t)
 
 	a := m.registerDefault(aID)
-	req1 := component.NewNamedRequirement("one", &aID)
-	req2 := component.NewNamedRequirement("two", &aID)
+	req1 := component.NameRequirement(&aID, "one")
+	req2 := component.NameRequirement(&aID, "two")
 
 	m.RequireOrFail(t, lifecycle.Test, req1, req2)
 	m.assertCount(2)
@@ -309,8 +309,8 @@ func TestDescriptorsMismatchedConfiguration(t *testing.T) {
 	config1 := testConfig{"one"}
 	config2 := testConfig{"two"}
 
-	req1 := component.NewConfiguredRequirement("", &a, config1)
-	req2 := component.NewConfiguredRequirement("", &a, config2)
+	req1 := component.ConfigureRequirement(&a, config1)
+	req2 := component.ConfigureRequirement(&a, config2)
 
 	expect(t).resolutionError(m.Require(lifecycle.Test, req1, req2))
 }
@@ -322,8 +322,8 @@ func TestIDsMismatchedConfiguration(t *testing.T) {
 	config1 := testConfig{"one"}
 	config2 := testConfig{"two"}
 
-	req1 := component.NewConfiguredRequirement("", &aID, config1)
-	req2 := component.NewConfiguredRequirement("", &aID, config2)
+	req1 := component.ConfigureRequirement(&aID, config1)
+	req2 := component.ConfigureRequirement(&aID, config2)
 
 	expect(t).resolutionError(m.Require(lifecycle.Test, req1, req2))
 }
@@ -335,8 +335,8 @@ func TestMixedMismatchedConfiguration(t *testing.T) {
 	config1 := testConfig{"one"}
 	config2 := testConfig{"two"}
 
-	req1 := component.NewConfiguredRequirement("", &a, config1)
-	req2 := component.NewConfiguredRequirement("", &aID, config2)
+	req1 := component.ConfigureRequirement(&a, config1)
+	req2 := component.ConfigureRequirement(&aID, config2)
 
 	expect(t).resolutionError(m.Require(lifecycle.Test, req1, req2))
 }
@@ -345,42 +345,42 @@ func TestDescriptorConfigOverride(t *testing.T) {
 	m := newManager(t)
 
 	a := m.registerDefault(aID)
-	config1 := testConfig{"one"}
+	config := testConfig{"one"}
 
-	req1 := component.NewConfiguredRequirement("", &a, nil)
-	req2 := component.NewConfiguredRequirement("", &a, config1)
+	req := component.ConfigureRequirement(&a, config)
 
-	m.RequireOrFail(t, lifecycle.Test, req1, req2)
+	m.RequireOrFail(t, lifecycle.Test, &a, req)
 	m.assertCount(1)
 	m.assertDescriptor(a, lifecycle.Test)
+	m.assertConfiguration(a, config)
 }
 
 func TestIDsConfigOverride(t *testing.T) {
 	m := newManager(t)
 
 	a := m.registerDefault(aID)
-	config1 := testConfig{"one"}
+	config := testConfig{"one"}
 
-	req1 := component.NewConfiguredRequirement("", &aID, nil)
-	req2 := component.NewConfiguredRequirement("", &aID, config1)
+	req := component.ConfigureRequirement(&aID, config)
 
-	m.RequireOrFail(t, lifecycle.Test, req1, req2)
+	m.RequireOrFail(t, lifecycle.Test, &aID, req)
 	m.assertCount(1)
 	m.assertDescriptor(a, lifecycle.Test)
+	m.assertConfiguration(a, config)
 }
 
 func TestMixedConfigOverride(t *testing.T) {
 	m := newManager(t)
 
 	a := m.registerDefault(aID)
-	config1 := testConfig{"one"}
+	config := testConfig{"one"}
 
-	req1 := component.NewConfiguredRequirement("", &a, nil)
-	req2 := component.NewConfiguredRequirement("", &aID, config1)
+	req := component.ConfigureRequirement(&aID, config)
 
-	m.RequireOrFail(t, lifecycle.Test, req1, req2)
+	m.RequireOrFail(t, lifecycle.Test, &a, req)
 	m.assertCount(1)
 	m.assertDescriptor(a, lifecycle.Test)
+	m.assertConfiguration(a, config)
 }
 
 func assertDescriptor(c component.Instance, desc component.Descriptor, scope lifecycle.Scope, t *testing.T) {
@@ -390,6 +390,17 @@ func assertDescriptor(c component.Instance, desc component.Descriptor, scope lif
 	}
 	if !reflect.DeepEqual(c.Descriptor(), desc) {
 		t.Fatalf("expected %v, found %v", desc, c.Descriptor())
+	}
+}
+
+func assertConfiguration(c component.Instance, config component.Configuration, t *testing.T) {
+	t.Helper()
+	if co, ok := c.(*comp); ok {
+		if co.config != config {
+			t.Fatalf("expected %v, found %v", config, co.config)
+		}
+	} else {
+		t.Fatalf("Unable to cast component %v (%T) to local comp type.", c, c)
 	}
 }
 
@@ -441,6 +452,18 @@ func (m *manager) assertNamedDescriptor(name string, desc component.Descriptor, 
 	assertDescriptor(c, desc, scope, m.t)
 }
 
+func (m *manager) assertConfiguration(desc component.Descriptor, config component.Configuration) {
+	m.assertNamedConfiguration("", desc, config)
+}
+
+func (m *manager) assertNamedConfiguration(name string, desc component.Descriptor, config component.Configuration) {
+	c := m.GetComponentForDescriptor(name, desc)
+	if c == nil {
+		m.t.Fatalf("component not found for descriptor:  (%v) %v", name, desc)
+	}
+	assertConfiguration(c, config, m.t)
+}
+
 type comp struct {
 	name   string
 	desc   component.Descriptor
@@ -448,20 +471,17 @@ type comp struct {
 	scope  lifecycle.Scope
 }
 
-func (c *comp) Name() string {
-	return c.name
-}
-
 func (c *comp) Descriptor() component.Descriptor {
 	return c.desc
 }
 
-func (c *comp) Configuration() component.Configuration {
-	return c.config
-}
-
 func (c *comp) Scope() lifecycle.Scope {
 	return c.scope
+}
+
+func (c *comp) Configure(config component.Configuration) error {
+	c.config = config
+	return nil
 }
 
 func (c *comp) Start(ctx context.Instance, scope lifecycle.Scope) error {

@@ -70,20 +70,22 @@ func TestConfiguredRequirements(t *testing.T) {
 
 	for _, rt := range tests {
 		t.Run(rt.desc, func(t *testing.T) {
-			var req *ConfiguredRequirement
-			if rt.conf == nil {
-				req = NewNamedRequirement(rt.name, rt.req)
+			r := NameRequirement(rt.req, rt.name)
+			if rt.conf != nil {
+				r = ConfigureRequirement(r, *rt.conf)
+			}
+			if req, ok := r.(*RequirementWrapper); ok {
+				if req.Name != rt.name {
+					t.Fatal("expected name '", rt.name, "' got '", req.Name, "'")
+				}
+				if req.Requirement != rt.req {
+					t.Fatal("expected requirement ", rt.req, " got ", req.Requirement)
+				}
+				if rt.conf != nil && req.Config != *rt.conf {
+					t.Fatal("expected configuration ", rt.conf, " got ", req.Config)
+				}
 			} else {
-				req = NewConfiguredRequirement(rt.name, rt.req, *rt.conf)
-			}
-			if req.GetName() != rt.name {
-				t.Fatal("expected requirement name '", rt.name, "' got '", req.GetName(), "'")
-			}
-			if req.GetRequirement() != rt.req {
-				t.Fatal("expected requirement ", rt.req, " got ", req.GetRequirement())
-			}
-			if rt.conf != nil && req.GetConfiguration() != *rt.conf {
-				t.Fatal("expected configuration ", rt.conf, " got ", req.GetConfiguration())
+				t.Fatalf("expected RequirementWrapper, got %T", r)
 			}
 		})
 	}

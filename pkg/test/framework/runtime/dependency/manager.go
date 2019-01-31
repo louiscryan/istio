@@ -107,7 +107,7 @@ func (m *Manager) NewComponent(name string, desc component.Descriptor, scope lif
 		return nil, err
 	}
 	// Now we can load the component itself.
-	return m.requireComponent(name, desc, scope)
+	return m.requireComponent(name, desc, nil, scope)
 }
 
 // NewComponentOrFail implements the component.Factory interface
@@ -129,8 +129,7 @@ func normalizeScope(desc component.Descriptor, scope lifecycle.Scope) lifecycle.
 	return scope
 }
 
-// TODO(sven): Take configuration here as well.
-func (m *Manager) requireComponent(name string, desc component.Descriptor, scope lifecycle.Scope) (component.Instance, component.RequirementError) {
+func (m *Manager) requireComponent(name string, desc component.Descriptor, config component.Configuration, scope lifecycle.Scope) (component.Instance, component.RequirementError) {
 	// Make sure that system components are always created with suite scope.
 	scope = normalizeScope(desc, scope)
 	compID := namedID{name, desc.ID}
@@ -160,7 +159,6 @@ func (m *Manager) requireComponent(name string, desc component.Descriptor, scope
 	}
 
 	// Get the component factory function.
-	// TODO(sven): Add support for taking configuration. Current plan is to use a Configurable marker interface.
 	fn, err := m.registry.GetFactory(desc)
 	if err != nil {
 		return nil, resolutionError(err)
@@ -170,6 +168,17 @@ func (m *Manager) requireComponent(name string, desc component.Descriptor, scope
 	c, err := fn()
 	if err != nil {
 		return nil, startError(err)
+	}
+
+	// Configure the component if configuration is non-nil and the component takes configuration.
+	if config != nil {
+		if co, ok := c.(api.Configurable); ok {
+			if err = co.Configure(config); err != nil {
+				return nil, startError(err)
+			}
+		} else {
+			return nil, startError(fmt.Errorf("component %v does not accept configuration yet one was provided (%v)", compID, config))
+		}
 	}
 
 	// Start the component.

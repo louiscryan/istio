@@ -74,12 +74,12 @@ func (p *creationProcessor) ProcessRequirements(reqs []component.Requirement) co
 // Parses a requirement into a requirement entry. This takes care of unwrapping the requirement
 // envelope into a single flat type that we don't need to reflect over.
 func parseRequirement(req component.Requirement) (r *reqEntry, err component.RequirementError) {
-	if c, ok := req.(*component.ConfiguredRequirement); ok {
-		if r, err = parseRequirement(c.GetRequirement()); err != nil {
+	if c, ok := req.(*component.RequirementWrapper); ok {
+		if r, err = parseRequirement(c.Requirement); err != nil {
 			return
 		}
-		r.id.Name = c.GetName()
-		r.config = c.GetConfiguration()
+		r.id.Name = c.Name
+		r.config = c.Config
 		return
 	}
 	if id, ok := req.(*component.ID); ok {
@@ -188,7 +188,7 @@ func (p *creationProcessor) ApplyDefaults() component.RequirementError {
 				if err != nil {
 					return resolutionError(err)
 				}
-				toProcess = append(toProcess, component.NewNamedRequirement(entry.id.Name, &desc))
+				toProcess = append(toProcess, component.NameRequirement(&desc, entry.id.Name))
 			}
 		}
 		done = len(toProcess) == 0
@@ -224,7 +224,7 @@ func (p *creationProcessor) CreateComponents() component.RequirementError {
 				delete(p.required, entry.id)
 
 				// Create the component.
-				if _, err := p.mgr.requireComponent(entry.id.Name, *entry.desc, p.scope); err != nil {
+				if _, err := p.mgr.requireComponent(entry.id.Name, *entry.desc, entry.config, p.scope); err != nil {
 					return err
 				}
 			}

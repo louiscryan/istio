@@ -17,42 +17,42 @@ package component
 import "fmt"
 
 var (
-	_ Requirement = &ConfiguredRequirement{}
+	_ Requirement = &RequirementWrapper{}
 )
 
 // Configuration is a marker interface for configuration objects that components take.
 type Configuration fmt.Stringer
 
-// A configured requirement contains the requirement, a configuration object, and the name to give
-// that configured object.
-type ConfiguredRequirement struct {
-	name   string
-	req    Requirement
-	config Configuration
+// RequirementWrapper wraps a requirement and adds a name and a configuration.
+type RequirementWrapper struct {
+	Requirement Requirement
+	Name        string
+	Config      Configuration
 }
 
-// Creates a new named requirement without configuration.
-func NewNamedRequirement(name string, requirement Requirement) *ConfiguredRequirement {
-	return NewConfiguredRequirement(name, requirement, nil)
+// String implements fmt.Stringer
+func (c RequirementWrapper) String() string {
+	return fmt.Sprint("{name: ", c.Name, ", requirement: ", c.Requirement, ", config: ", c.Config, "}")
 }
 
-// Creates a named requirement that includes configuration.
-func NewConfiguredRequirement(name string, requirement Requirement, config Configuration) *ConfiguredRequirement {
-	return &ConfiguredRequirement{name, requirement, config}
+// NameRequirement wraps a requirement with a name.
+func NameRequirement(req Requirement, name string) Requirement {
+	// If this is already a wrapped requirement, just set the name.
+	if c, ok := req.(*RequirementWrapper); ok {
+		c.Name = name
+		return c
+	}
+	// Otherwise wrap the requirement in a RequirementWrapper.
+	return &RequirementWrapper{req, name, nil}
 }
 
-func (c ConfiguredRequirement) String() string {
-	return fmt.Sprint("{name: ", c.name, ", requirement: ", c.req, ", config: ", c.config, "}")
-}
-
-func (c *ConfiguredRequirement) GetName() string {
-	return c.name
-}
-
-func (c *ConfiguredRequirement) GetRequirement() Requirement {
-	return c.req
-}
-
-func (c *ConfiguredRequirement) GetConfiguration() Configuration {
-	return c.config
+// ConfigureRequirement wraps a requirement with a configuration.
+func ConfigureRequirement(req Requirement, config Configuration) Requirement {
+	// If this is already a wrapped requirement, just set the config.
+	if c, ok := req.(*RequirementWrapper); ok {
+		c.Config = config
+		return c
+	}
+	// Otherwise wrap the requirement in a RequirementWrapper.
+	return &RequirementWrapper{req, "", config}
 }
