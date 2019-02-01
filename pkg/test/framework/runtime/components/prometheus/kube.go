@@ -295,7 +295,7 @@ func areEqual(v1, v2 model.Value) bool {
 
 			if vec1[i].Value != vec2[i].Value {
 				scopes.Framework.Debugf(
-					"Prometheus.areEqual vector value mismatch (at:%d): %d != %d",
+					"Prometheus.areEqual vector value mismatch (at:%d): %f != %f",
 					i, vec1[i].Value, vec2[i].Value)
 				return false
 			}

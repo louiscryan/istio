@@ -140,7 +140,7 @@ func (m *Manager) requireComponent(entry *reqEntry, s lifecycle.Scope) (componen
 	// First, check if we've already created this named component.
 	if cEntry, ok := m.compMap[entry.id]; ok {
 		descName := entry.desc.FriendlyName()
-		if !reflect.DeepEqual(cEntry.comp.Descriptor(), entry.desc) {
+		if !reflect.DeepEqual(cEntry.comp.Descriptor(), *entry.desc) {
 			err := fmt.Errorf("cannot add component `%s`, already running with `%s`", descName, cEntry.comp.Descriptor().FriendlyName())
 			return nil, resolutionError(err)
 		}
