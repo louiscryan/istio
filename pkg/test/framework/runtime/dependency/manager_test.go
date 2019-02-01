@@ -475,6 +475,10 @@ func (c *comp) Descriptor() component.Descriptor {
 	return c.desc
 }
 
+func (c *comp) Configuration() component.Configuration {
+	return c.config
+}
+
 func (c *comp) Scope() lifecycle.Scope {
 	return c.scope
 }

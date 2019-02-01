@@ -159,6 +159,7 @@ func (m *Manager) requireComponent(name string, desc component.Descriptor, confi
 	}
 
 	// Get the component factory function.
+	// TODO(sven): Add support for taking configuration. Current plan is to use a Configurable marker interface.
 	fn, err := m.registry.GetFactory(desc)
 	if err != nil {
 		return nil, resolutionError(err)
