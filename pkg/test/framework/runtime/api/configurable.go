@@ -18,5 +18,7 @@ import "istio.io/istio/pkg/test/framework/api/component"
 
 // Configurable interface is implemented by Components that accept Configuration.
 type Configurable interface {
+	// Configure is called by the test framework to configure a component. It should not be called directly by test code.
+	// To configure a component, pass the configuration when requiring the component.
 	Configure(config component.Configuration) error
 }

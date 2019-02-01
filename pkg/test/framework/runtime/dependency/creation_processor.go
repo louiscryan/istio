@@ -224,7 +224,7 @@ func (p *creationProcessor) CreateComponents() component.RequirementError {
 				delete(p.required, entry.id)
 
 				// Create the component.
-				if _, err := p.mgr.requireComponent(entry.id.Name, *entry.desc, entry.config, p.scope); err != nil {
+				if _, err := p.mgr.requireComponent(entry, p.scope); err != nil {
 					return err
 				}
 			}

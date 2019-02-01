@@ -107,7 +107,11 @@ func (m *Manager) NewComponent(name string, desc component.Descriptor, scope lif
 		return nil, err
 	}
 	// Now we can load the component itself.
-	return m.requireComponent(name, desc, nil, scope)
+	reqEntry, err := parseRequirement(component.NameRequirement(&desc, name))
+	if err != nil {
+		return nil, err
+	}
+	return m.requireComponent(reqEntry, scope)
 }
 
 // NewComponentOrFail implements the component.Factory interface
@@ -129,63 +133,66 @@ func normalizeScope(desc component.Descriptor, scope lifecycle.Scope) lifecycle.
 	return scope
 }
 
-func (m *Manager) requireComponent(name string, desc component.Descriptor, config component.Configuration, scope lifecycle.Scope) (component.Instance, component.RequirementError) {
+func (m *Manager) requireComponent(entry *reqEntry, s lifecycle.Scope) (component.Instance, component.RequirementError) {
 	// Make sure that system components are always created with suite scope.
-	scope = normalizeScope(desc, scope)
-	compID := namedID{name, desc.ID}
+	s = normalizeScope(*entry.desc, s)
 
 	// First, check if we've already created this named component.
-	if c, ok := m.compMap[compID]; ok {
-		if !reflect.DeepEqual(c.comp.Descriptor(), desc) {
-			return nil, resolutionError(fmt.Errorf("cannot add component `%s`, already running with `%s`", desc.FriendlyName(), c.comp.Descriptor().FriendlyName()))
+	if cEntry, ok := m.compMap[entry.id]; ok {
+		descName := entry.desc.FriendlyName()
+		if !reflect.DeepEqual(cEntry.comp.Descriptor(), entry.desc) {
+			err := fmt.Errorf("cannot add component `%s`, already running with `%s`", descName, cEntry.comp.Descriptor().FriendlyName())
+			return nil, resolutionError(err)
 		}
-		if c.comp.Scope().IsLower(scope) {
-			return nil, resolutionError(fmt.Errorf("component `%s` already exists with lower lifecycle scope: %s", desc.FriendlyName(), c.comp.Scope()))
+		if cEntry.comp.Scope().IsLower(s) {
+			err := fmt.Errorf("component `%s` already exists with lower lifecycle scope: %s", descName, cEntry.comp.Scope())
+			return nil, resolutionError(err)
 		}
 		// The component was already added.
-		return c.comp, nil
+		return cEntry.comp, nil
 	}
 
 	// Verify all of the child dependencies were already created, as they should have been by callers
 	// of this function. Otherwise report an error.
-	for _, childReq := range desc.Requires {
+	for _, childReq := range entry.desc.Requires {
 		childEntry, err := parseRequirement(childReq)
 		if err != nil {
 			return nil, err
 		}
 		if _, ok := m.compMap[childEntry.id]; !ok {
-			return nil, resolutionError(fmt.Errorf("missing child component %v while trying to create component %v", childEntry.id, compID))
+			err := fmt.Errorf("missing child component %v while trying to create component %v", childEntry.id, entry.id)
+			return nil, resolutionError(err)
 		}
 	}
 
 	// Get the component factory function.
-	// TODO(sven): Add support for taking configuration. Current plan is to use a Configurable marker interface.
-	fn, err := m.registry.GetFactory(desc)
+	fn, err := m.registry.GetFactory(*entry.desc)
 	if err != nil {
 		return nil, resolutionError(err)
 	}
 
 	// Create the component.
-	c, err := fn()
+	comp, err := fn()
 	if err != nil {
 		return nil, startError(err)
 	}
 
 	// Configure the component if configuration is non-nil and the component takes configuration.
-	if config != nil {
-		if co, ok := c.(api.Configurable); ok {
-			if err = co.Configure(config); err != nil {
+	if entry.config != nil {
+		if configurable, ok := comp.(api.Configurable); ok {
+			if err = configurable.Configure(entry.config); err != nil {
 				return nil, startError(err)
 			}
 		} else {
-			return nil, startError(fmt.Errorf("component %v does not accept configuration yet one was provided (%v)", compID, config))
+			err = fmt.Errorf("component %v does not accept configuration yet one was provided (%v)", entry.id, entry.config)
+			return nil, startError(err)
 		}
 	}
 
 	// Start the component.
-	if err := c.Start(m.ctx, scope); err != nil {
+	if err := comp.Start(m.ctx, s); err != nil {
 		// Close the component if we can.
-		if cl, ok := c.(io.Closer); ok {
+		if cl, ok := comp.(io.Closer); ok {
 			err = multierror.Append(err, cl.Close())
 		}
 		return nil, startError(err)
@@ -193,13 +200,13 @@ func (m *Manager) requireComponent(name string, desc component.Descriptor, confi
 
 	// Store the component entry in the manager.
 	cEntry := compEntry{
-		id:   compID,
-		comp: c,
+		id:   entry.id,
+		comp: comp,
 	}
-	m.compMap[compID] = &cEntry
+	m.compMap[entry.id] = &cEntry
 	m.all = append(m.all, &cEntry)
 
-	return c, nil
+	return comp, nil
 }
 
 // GetComponent implements the component.Repository interface
