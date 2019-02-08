@@ -34,16 +34,21 @@ func TestEcho(t *testing.T) {
 	// Echo is only supported on native environment right now, skip if we can't load that.
 	ctx.RequireOrSkip(t, lifecycle.Test, &descriptors.NativeEnvironment)
 
-	reqA := component.NameRequirement(&ids.Echo, "a")
-	reqA = component.ConfigureRequirement(reqA, components.EchoConfig{"a.echo", "v1"})
+	reqA := &component.Descriptor{
+		Key:           component.Key{ID: ids.Echo, Variant: "a"},
+		Configuration: components.EchoConfig{Service: "a.echo", Version: "v1"},
+	}
 
-	reqB := component.NameRequirement(&ids.Echo, "b")
-	reqB = component.ConfigureRequirement(reqB, components.EchoConfig{"b.echo", "v2"})
+	reqB := &component.Descriptor{
+		Key:           component.Key{ID: ids.Echo, Variant: "b"},
+		Configuration: components.EchoConfig{Service: "b.echo", Version: "v2"},
+		Requires:      []component.Requirement{reqA},
+	}
 
-	ctx.RequireOrFail(t, lifecycle.Test, reqA, reqB)
+	ctx.RequireOrFail(t, lifecycle.Test, reqB)
 
-	echoA := components.GetEcho("a", ctx, t)
-	echoB := components.GetEcho("b", ctx, t)
+	echoA := components.GetEcho(reqA, ctx, t)
+	echoB := components.GetEcho(reqB, ctx, t)
 
 	// Verify the configuration was set appropriately.
 	if echoA.Config().Service != "a.echo" {

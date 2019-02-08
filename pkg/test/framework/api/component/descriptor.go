@@ -14,37 +14,46 @@
 
 package component
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var _ Requirement = &Descriptor{}
 
-// Variant allows an environment to support multiple components with the same ID. For example, an environment might
-// support two Widget components: "fake widget" and "real widget".
+// Variant supports multiple components with the same ID. For example, a test may use two Widget
+// components: "fake widget" and "real widget".
 type Variant string
+
+func CreateDescriptor(id ID, variant string) Descriptor {
+	return Descriptor{Key: Key{ID: id, Variant: Variant(variant)}}
+}
 
 // Descriptor describes a component of the testing framework.
 type Descriptor struct {
-	ID
+	Key               Key
 	IsSystemComponent bool
-	Variant           Variant
+	Configuration     Configuration
 	Requires          []Requirement
+}
+
+// Key returns the key for this Descriptor, which includes the ID and Variant.
+func (d Descriptor) GetKey() Key {
+	return d.Key
 }
 
 // FriendlyName provides a brief one-liner containing ID and Variant. Useful for error messages.
 func (d Descriptor) FriendlyName() string {
-	if d.Variant != "" {
-		return fmt.Sprintf("%s(%s)", d.ID, d.Variant)
-	}
-	return string(d.ID)
+	return d.Key.String()
 }
 
-func (d *Descriptor) String() string {
-	result := ""
+func (d Descriptor) String() string {
+	result := "Descriptor{\n"
 
-	result += fmt.Sprintf("ID:                 %v\n", d.ID)
+	result += fmt.Sprintf("Key:                %v\n", d.Key)
 	result += fmt.Sprintf("IsSystemComponent:  %t\n", d.IsSystemComponent)
-	result += fmt.Sprintf("Variant:            %s\n", d.Variant)
+	result += fmt.Sprintf("Configuration:      %s\n", d.Configuration)
 	result += fmt.Sprintf("Requires:           %v\n", d.Requires)
+	result += "}"
 
 	return result
 }

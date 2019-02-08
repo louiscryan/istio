@@ -22,7 +22,6 @@ import (
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/test/application/echo"
 	"istio.io/istio/pkg/test/framework/api/component"
-	"istio.io/istio/pkg/test/framework/api/ids"
 )
 
 var (
@@ -99,6 +98,6 @@ type EchoEndpoint interface {
 }
 
 // Get an echo instance from the repository.
-func GetEcho(name string, e component.Repository, t testing.TB) Echo {
-	return e.GetComponentOrFail(name, ids.Echo, t).(Echo)
+func GetEcho(req component.Requirement, e component.Repository, t testing.TB) Echo {
+	return e.GetComponentOrFail(req, t).(Echo)
 }
