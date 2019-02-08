@@ -34,16 +34,12 @@ func TestEcho(t *testing.T) {
 	// Echo is only supported on native environment right now, skip if we can't load that.
 	ctx.RequireOrSkip(t, lifecycle.Test, &descriptors.NativeEnvironment)
 
-	reqA := &component.Descriptor{
-		Key:           component.Key{ID: ids.Echo, Variant: "a"},
-		Configuration: components.EchoConfig{Service: "a.echo", Version: "v1"},
-	}
+	reqA := component.NewDescriptor(ids.Echo, "a")
+	reqA.Configuration = components.EchoConfig{Service: "a.echo", Version: "v1"}
 
-	reqB := &component.Descriptor{
-		Key:           component.Key{ID: ids.Echo, Variant: "b"},
-		Configuration: components.EchoConfig{Service: "b.echo", Version: "v2"},
-		Requires:      []component.Requirement{reqA},
-	}
+	reqB := component.NewDescriptor(ids.Echo, "b")
+	reqB.Configuration = components.EchoConfig{Service: "b.echo", Version: "v2"}
+	reqB.Requires = append(reqB.Requires, reqA)
 
 	ctx.RequireOrFail(t, lifecycle.Test, reqB)
 

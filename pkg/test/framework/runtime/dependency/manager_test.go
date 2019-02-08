@@ -267,13 +267,13 @@ func TestVariantsCreateMultipleComponents(t *testing.T) {
 	m := newManager(t)
 
 	_ = m.registerDefault(aID)
-	req1 := component.CreateDescriptor(aID, "one")
-	req2 := component.CreateDescriptor(aID, "two")
+	req1 := component.NewDescriptor(aID, "one")
+	req2 := component.NewDescriptor(aID, "two")
 
-	m.RequireOrFail(t, lifecycle.Test, &req1, &req2)
+	m.RequireOrFail(t, lifecycle.Test, req1, req2)
 	m.assertCount(2)
-	m.assertDescriptor(req1, lifecycle.Test)
-	m.assertDescriptor(req2, lifecycle.Test)
+	m.assertDescriptor(*req1, lifecycle.Test)
+	m.assertDescriptor(*req2, lifecycle.Test)
 }
 
 type testConfig struct {
@@ -289,13 +289,13 @@ func TestMismatchedConfiguration(t *testing.T) {
 
 	_ = m.registerDefault(aID)
 
-	req1 := component.CreateDescriptor(aID, "")
+	req1 := component.NewDescriptor(aID, "")
 	req1.Configuration = testConfig{"one"}
 
-	req2 := component.CreateDescriptor(aID, "")
+	req2 := component.NewDescriptor(aID, "")
 	req2.Configuration = testConfig{"two"}
 
-	expect(t).resolutionError(m.Require(lifecycle.Test, &req1, &req2))
+	expect(t).resolutionError(m.Require(lifecycle.Test, req1, req2))
 }
 
 func TestConfigOverride(t *testing.T) {
@@ -303,10 +303,10 @@ func TestConfigOverride(t *testing.T) {
 
 	a := m.registerDefault(aID)
 
-	req := component.CreateDescriptor(aID, "")
+	req := component.NewDescriptor(aID, "")
 	req.Configuration = testConfig{"one"}
 
-	m.RequireOrFail(t, lifecycle.Test, &a, &req)
+	m.RequireOrFail(t, lifecycle.Test, &a, req)
 	m.assertCount(1)
 	m.assertDescriptor(a, lifecycle.Test)
 	m.assertConfiguration(a, req.Configuration)

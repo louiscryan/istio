@@ -24,8 +24,9 @@ var _ Requirement = &Descriptor{}
 // components: "fake widget" and "real widget".
 type Variant string
 
-func CreateDescriptor(id ID, variant string) Descriptor {
-	return Descriptor{Key: Key{ID: id, Variant: Variant(variant)}}
+// CreateDescriptor creates a descriptor with the given ID and variant.
+func NewDescriptor(id ID, variant string) *Descriptor {
+	return &Descriptor{Key: Key{ID: id, Variant: Variant(variant)}}
 }
 
 // Descriptor describes a component of the testing framework.

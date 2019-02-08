@@ -14,9 +14,7 @@
 
 package component
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Requirement is a marker interface for an element that can be required of the testing framework.
 type Requirement interface {
