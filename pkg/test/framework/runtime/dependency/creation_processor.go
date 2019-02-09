@@ -71,10 +71,7 @@ func (e reqEntry) String() string {
 
 func (p *creationProcessor) ProcessRequirements(reqs []component.Requirement) component.RequirementError {
 	for _, req := range reqs {
-		entry, err := createEntry(req)
-		if err != nil {
-			return err
-		}
+		entry := createEntry(req)
 		if err := p.addRequirement(entry); err != nil {
 			return err
 		}
@@ -84,15 +81,15 @@ func (p *creationProcessor) ProcessRequirements(reqs []component.Requirement) co
 
 // CreateEntry wraps the requirement in an entry object that can track the state of child
 // dependencies that need to be resolved.
-func createEntry(req component.Requirement) (r *reqEntry, err component.RequirementError) {
-	r = &reqEntry{
+func createEntry(req component.Requirement) *reqEntry {
+	r := &reqEntry{
 		key:      req.GetKey(),
 		children: make(map[component.Key]bool),
 	}
 	if d, ok := req.(*component.Descriptor); ok {
 		r.desc = d
 	}
-	return
+	return r
 }
 
 // Adds a requirement to our map of requirements. This verifies the requirement is not overwriting
@@ -187,10 +184,7 @@ func (p *creationProcessor) loadChildren(entry *reqEntry) component.RequirementE
 		return nil
 	}
 	for _, childReq := range entry.desc.Requires {
-		child, err := createEntry(childReq)
-		if err != nil {
-			return err
-		}
+		child := createEntry(childReq)
 		entry.children[child.key] = true
 	}
 	return nil

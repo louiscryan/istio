@@ -24,9 +24,13 @@ var _ Requirement = &Descriptor{}
 // components: "fake widget" and "real widget".
 type Variant string
 
-// CreateDescriptor creates a descriptor with the given ID and variant.
-func NewDescriptor(id ID, variant string) *Descriptor {
-	return &Descriptor{Key: Key{ID: id, Variant: Variant(variant)}}
+// CreateDescriptor creates a descriptor with the given ID and variant. Variants of a component type
+// will override the properties of the default Descriptor for that component type if set. For example
+// setting a new Configuration or Requires value will override the default Configuration or Requires
+// values. This can be used to create multiple instances of a component type with different
+// configuration and requirements.
+func NewDescriptor(id ID, variant Variant) *Descriptor {
+	return &Descriptor{Key: Key{ID: id, Variant: variant}}
 }
 
 // Descriptor describes a component of the testing framework.

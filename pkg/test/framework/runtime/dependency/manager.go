@@ -113,10 +113,7 @@ func (m *Manager) NewComponent(desc component.Descriptor, scope lifecycle.Scope)
 		return nil, err
 	}
 	// Now we can load the component itself.
-	reqEntry, err := createEntry(&desc)
-	if err != nil {
-		return nil, err
-	}
+	reqEntry := createEntry(&desc)
 	return m.requireComponent(reqEntry, scope)
 }
 
@@ -161,10 +158,7 @@ func (m *Manager) requireComponent(entry *reqEntry, s lifecycle.Scope) (componen
 	// Verify all of the child dependencies were already created, as they should have been by callers
 	// of this function. Otherwise report an error.
 	for _, childReq := range entry.desc.Requires {
-		childEntry, err := createEntry(childReq)
-		if err != nil {
-			return nil, err
-		}
+		childEntry := createEntry(childReq)
 		if _, ok := m.compMap[childEntry.key]; !ok {
 			err := fmt.Errorf("missing child component %v while trying to create component %v", childEntry, entry)
 			return nil, resolutionError(err)
