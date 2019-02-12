@@ -15,10 +15,11 @@
 package pilot
 
 import (
+	"fmt"
 	"io"
 	"net"
 
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 
 	"istio.io/istio/pilot/pkg/bootstrap"
 	"istio.io/istio/pilot/pkg/model"
@@ -57,6 +58,7 @@ type nativeComponent struct {
 	server   *bootstrap.Server
 	stopChan chan struct{}
 	scope    lifecycle.Scope
+	config   components.PilotConfig
 }
 
 func (c *nativeComponent) Descriptor() component.Descriptor {
@@ -65,6 +67,15 @@ func (c *nativeComponent) Descriptor() component.Descriptor {
 
 func (c *nativeComponent) Scope() lifecycle.Scope {
 	return c.scope
+}
+
+func (c *nativeComponent) Configure(config component.Configuration) error {
+	pilotConfig, ok := config.(components.PilotConfig)
+	if !ok {
+		return fmt.Errorf("supplied configuration was not a PilotConfig, got %T (%v)", config, config)
+	}
+	c.config = pilotConfig
+	return nil
 }
 
 func (c *nativeComponent) Start(ctx context.Instance, scope lifecycle.Scope) (err error) {
@@ -93,9 +104,6 @@ func (c *nativeComponent) Start(ctx context.Instance, scope lifecycle.Scope) (er
 		Namespace:        env.Namespace,
 		DiscoveryOptions: options,
 		MeshConfig:       env.Mesh,
-		Config: bootstrap.ConfigArgs{
-			Controller: env.ServiceManager.ConfigStore,
-		},
 		// Use the config store for service entries as well.
 		Service: bootstrap.ServiceArgs{
 			// A ServiceEntry registry is added by default, which is what we want. Don't include any other registries.
@@ -104,6 +112,16 @@ func (c *nativeComponent) Start(ctx context.Instance, scope lifecycle.Scope) (er
 		// Include all of the default plugins for integration with Mixer, etc.
 		Plugins:   bootstrap.DefaultPlugins,
 		ForceStop: true,
+	}
+
+	if c.config.Galley != nil {
+		galley := ctx.GetComponent(c.config.Galley).(components.Galley)
+		bootstrapArgs.MCPServerAddrs = []string{"mcp://" + galley.GetMCPAddress()}
+		bootstrapArgs.MCPMaxMessageSize = bootstrap.DefaultMCPMaxMsgSize
+	} else {
+		bootstrapArgs.Config = bootstrap.ConfigArgs{
+			Controller: env.ServiceManager.ConfigStore,
+		}
 	}
 
 	// Save the config store.

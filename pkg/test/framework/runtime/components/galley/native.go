@@ -20,9 +20,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 
 	"istio.io/istio/galley/pkg/server"
 	"istio.io/istio/pkg/test/framework/api/component"
@@ -84,6 +85,11 @@ func (c *nativeComponent) Scope() lifecycle.Scope {
 }
 
 // SetMeshConfig applies the given mesh config yaml file via Galley.
+func (c *nativeComponent) GetMCPAddress() string {
+	return c.server.Address().String()
+}
+
+// SetMeshConfig applies the given mesh config yaml file via Galley.
 func (c *nativeComponent) SetMeshConfig(yamlText string) error {
 	if err := ioutil.WriteFile(c.meshConfigFile, []byte(yamlText), os.ModePerm); err != nil {
 		return err
@@ -119,8 +125,24 @@ func (c *nativeComponent) ApplyConfig(yamlText string) (err error) {
 	if err = ioutil.WriteFile(fn, []byte(yamlText), os.ModePerm); err != nil {
 		return err
 	}
-
 	return
+}
+
+// ApplyConfigDir implements Galley.ApplyConfigDir.
+func (c *nativeComponent) ApplyConfigDir(sourceDir string) error {
+	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		targetPath := c.configDir + string(os.PathSeparator) + path[len(sourceDir):]
+		if info.IsDir() {
+			scopes.Framework.Debugf("Making dir: %v", targetPath)
+			return os.MkdirAll(targetPath, os.ModePerm)
+		}
+		scopes.Framework.Debugf("Copying file to: %v", targetPath)
+		contents, readerr := ioutil.ReadFile(path)
+		if readerr != nil {
+			return readerr
+		}
+		return ioutil.WriteFile(targetPath, contents, os.ModePerm)
+	})
 }
 
 // WaitForSnapshot implements Galley.WaitForSnapshot.

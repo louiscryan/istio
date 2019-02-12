@@ -32,7 +32,24 @@ type Pilot interface {
 	WatchDiscovery(duration time.Duration, accept func(*xdsapi.DiscoveryResponse) (bool, error)) error
 }
 
+// Structured config for the Pilot component
+type PilotConfig struct {
+	component.Configuration
+	// If set then pilot takes a dependency on the referenced Galley instance
+	Galley component.Requirement
+}
+
+// Create a configured Pilot component definition
+func ConfigurePilot(id string, config PilotConfig) component.Requirement {
+	descriptor := component.NewDescriptor(ids.Pilot, component.Variant(id))
+	descriptor.Configuration = config
+	if config.Galley != nil {
+		descriptor.Requires = append(descriptor.Requires, config.Galley)
+	}
+	return descriptor
+}
+
 // GetPilot from the repository
-func GetPilot(e component.Repository, t testing.TB) Pilot {
-	return e.GetComponentOrFail(ids.Pilot, t).(Pilot)
+func GetPilot(e component.Repository, t testing.TB, requirement component.Requirement) Pilot {
+	return e.GetComponentOrFail(requirement, t).(Pilot)
 }

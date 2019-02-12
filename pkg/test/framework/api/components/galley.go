@@ -25,8 +25,14 @@ import (
 type Galley interface {
 	component.Instance
 
+	// Get the address of the MCP endpoint Galley is serving on
+	GetMCPAddress() string
+
 	// ApplyConfig applies the given config yaml file via Galley.
 	ApplyConfig(yamlText string) error
+
+	// ApplyConfigDir recursively applies all the config files in the specified directory
+	ApplyConfigDir(configDir string) error
 
 	// ClearConfig clears all applied config so far.
 	ClearConfig() error
